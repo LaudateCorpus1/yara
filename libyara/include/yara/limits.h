@@ -62,7 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define LOOP_LOCAL_VARS                 4
 #define STRING_CHAINING_THRESHOLD       200
-#define LEX_BUF_SIZE                    8192
+#define LEX_BUF_SIZE                    65536
 
 
 // Maximum allowed split ID, also limiting the number of split instructions
@@ -83,6 +83,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define RE_MAX_FIBERS                   1024
 
 // Maximum number of levels in regexp's AST
-#define RE_MAX_AST_LEVELS               6000
+#define RE_MAX_AST_LEVELS               9000
 
 #endif

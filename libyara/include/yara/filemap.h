@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define YR_FILEMAP_H
 
 #ifdef _MSC_VER
-#define off_t              int64_t
+//#define off_t              int64_t
 #else
 #include <sys/types.h>
 #endif
@@ -68,14 +68,14 @@ YR_API int yr_filemap_map(
 
 YR_API int yr_filemap_map_fd(
     YR_FILE_DESCRIPTOR file,
-    off_t offset,
+    int64_t offset,
     size_t size,
     YR_MAPPED_FILE* pmapped_file);
 
 
 YR_API int yr_filemap_map_ex(
     const char* file_path,
-    off_t offset,
+    int64_t offset,
     size_t size,
     YR_MAPPED_FILE* pmapped_file);
 
