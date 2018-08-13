@@ -64,7 +64,7 @@ typedef enum _YR_CONFIG_NAME
 
 #define DEFAULT_STACK_SIZE              16384
 #define DEFAULT_MAX_STRINGS_PER_RULE    10000
-#define DEFAULT_MAX_MATCH_DATA          512
+#define DEFAULT_MAX_MATCH_DATA          65536
 
 
 YR_API int yr_initialize(void);
