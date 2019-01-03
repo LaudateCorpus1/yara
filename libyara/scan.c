@@ -872,8 +872,9 @@ int yr_scan_verify_match(
 
   #ifdef PROFILING_ENABLED
   uint64_t finish_time = yr_stopwatch_elapsed_us(&context->stopwatch);
-  string->time_cost += (finish_time - start_time);
-  string->rule->time_cost += (finish_time - start_time);
+
+  string->rule->time_cost_per_thread[context->tidx] += (
+      finish_time - start_time);
   #endif
 
   return result;

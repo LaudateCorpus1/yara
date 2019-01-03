@@ -28,9 +28,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <string.h>
 
+#include <yara/utils.h>
 #include <yara/integers.h>
 #include <yara/hash.h>
 #include <yara/mem.h>
@@ -98,7 +98,8 @@ uint32_t yr_hash(
   uint32_t result = seed;
   size_t i;
 
-  assert(len > 0);
+  if (len == 0)
+    return result;
 
   for (i = len - 1; i > 0; i--)
   {

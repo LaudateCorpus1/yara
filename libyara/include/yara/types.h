@@ -30,8 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef YR_TYPES_H
 #define YR_TYPES_H
 
-#include <stdbool.h>
-
 #include <yara/arena.h>
 #include <yara/bitmask.h>
 #include <yara/limits.h>
@@ -275,15 +273,12 @@ struct YR_STRING
 
   YR_MATCHES matches[YR_MAX_THREADS];
   YR_MATCHES unconfirmed_matches[YR_MAX_THREADS];
-
-  // Used only when PROFILING_ENABLED is defined
-  uint64_t time_cost;
 };
 
 
 struct YR_RULE
 {
-  int32_t g_flags;               // Global flags
+  int32_t g_flags;                  // Global flags
   int32_t t_flags[YR_MAX_THREADS];  // Thread-specific flags
 
   DECLARE_REFERENCE(const char*, identifier);
@@ -292,8 +287,19 @@ struct YR_RULE
   DECLARE_REFERENCE(YR_STRING*, strings);
   DECLARE_REFERENCE(YR_NAMESPACE*, ns);
 
-  // Used only when PROFILING_ENABLED is defined
-  uint64_t time_cost;
+  // Number of atoms generated for this rule.
+  int32_t num_atoms;
+
+  // Used only when PROFILING_ENABLED is defined. This is the sum of all values
+  // in time_cost_per_thread. This is updated once on each call to
+  // yr_scanner_scan_xxx.
+  volatile int64_t time_cost;
+
+  // Used only when PROFILING_ENABLED is defined. This array holds the time
+  // cost for each thread using this structure concurrenlty. This is necessary
+  // because a global variable causes too much contention while trying to
+  // increment in a synchronized way from multiple threads.
+  int64_t time_cost_per_thread[YR_MAX_THREADS];
 };
 
 
@@ -389,8 +395,10 @@ struct RE_NODE
 
   RE_CLASS* re_class;
 
-  RE_NODE* left;
-  RE_NODE* right;
+  RE_NODE* children_head;
+  RE_NODE* children_tail;
+  RE_NODE* prev_sibling;
+  RE_NODE* next_sibling;
 
   uint8_t* forward_code;
   uint8_t* backward_code;
@@ -407,7 +415,6 @@ struct RE_CLASS
 struct RE_AST
 {
   uint32_t flags;
-  uint16_t levels;
   RE_NODE* root_node;
 };
 

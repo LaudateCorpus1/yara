@@ -71,6 +71,27 @@ int read_file(
     char* filename, char** buf);
 
 
+typedef struct atom atom;
+
+struct atom
+{
+  uint8_t length;
+  uint8_t data[YR_MAX_ATOM_LENGTH];
+};
+
+
+void assert_re_atoms(
+    char* re,
+    int expected_atom_count,
+    atom* expected_atoms);
+
+
+void assert_hex_atoms(
+    char* hex,
+    int expected_atom_count,
+    atom* expected_atoms);
+
+
 #define assert_true_expr(expr)                                          \
   do {                                                                  \
     if (!(expr)) {                                                      \
@@ -177,7 +198,7 @@ int read_file(
     int result = compile_rule(rule, &rules);                            \
     if (result == ERROR_SUCCESS) {                                      \
       yr_rules_destroy(rules);                                          \
-      if (warnings < w) {                                              \
+      if (warnings < w) {                                               \
         fprintf(stderr, "%s:%d: expecting warning\n",                   \
                 __FILE__, __LINE__);                                    \
         exit(EXIT_FAILURE);                                             \
@@ -191,8 +212,26 @@ int read_file(
   } while (0);
 
 
+#define assert_no_warnings(rule) do {                                   \
+    YR_RULES* rules;                                                    \
+    int result = compile_rule(rule, &rules);                            \
+    if (result == ERROR_SUCCESS) {                                      \
+      yr_rules_destroy(rules);                                          \
+      if (warnings > 0) {                                               \
+        fprintf(stderr, "%s:%d: unexpected warning\n",                  \
+                __FILE__, __LINE__);                                    \
+        exit(EXIT_FAILURE);                                             \
+      }                                                                 \
+    }                                                                   \
+    else {                                                              \
+      fprintf(stderr, "%s:%d: failed to compile << %s >>: %s\n",        \
+              __FILE__, __LINE__, rule, compile_error);                 \
+      exit(EXIT_FAILURE);                                               \
+    }                                                                   \
+  } while (0);
+
+
 #define assert_warning(rule) assert_warnings(rule, 1)
-#define assert_no_warning(rule) assert_warnings(rule, 0)
 
 
 #define assert_true_regexp(regexp,string,expected) do {                 \

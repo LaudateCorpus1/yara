@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -120,45 +119,65 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %lex-param {yyscan_t yyscanner}
 %lex-param {YR_COMPILER* compiler}
 
-%token _DOT_DOT_
-%token _RULE_
-%token _PRIVATE_
-%token _GLOBAL_
-%token _META_
-%token <string> _STRINGS_
-%token _CONDITION_
-%token <c_string> _IDENTIFIER_
-%token <c_string> _STRING_IDENTIFIER_
-%token <c_string> _STRING_COUNT_
-%token <c_string> _STRING_OFFSET_
-%token <c_string> _STRING_LENGTH_
-%token <c_string> _STRING_IDENTIFIER_WITH_WILDCARD_
-%token <integer> _NUMBER_
-%token <double_> _DOUBLE_
-%token <integer> _INTEGER_FUNCTION_
-%token <sized_string> _TEXT_STRING_
-%token <sized_string> _HEX_STRING_
-%token <sized_string> _REGEXP_
-%token _ASCII_
-%token _WIDE_
-%token _XOR_
-%token _NOCASE_
-%token _FULLWORD_
-%token _AT_
-%token _FILESIZE_
-%token _ENTRYPOINT_
-%token _ALL_
-%token _ANY_
-%token _IN_
-%token _OF_
-%token _FOR_
-%token _THEM_
-%token _MATCHES_
-%token _CONTAINS_
-%token _IMPORT_
+// Token that marks the end of the original file.
+%token _END_OF_FILE_  0                                "end of file"
 
-%token _TRUE_
-%token _FALSE_
+// Token that marks the end of included files, we can't use  _END_OF_FILE_
+// because bison stops parsing when it sees _END_OF_FILE_, we want to be
+// be able to identify the point where an included file ends, but continuing
+// parsing any content that follows.
+%token _END_OF_INCLUDED_FILE_                          "end of included file"
+
+%token _DOT_DOT_                                       ".."
+%token _RULE_                                          "<rule>"
+%token _PRIVATE_                                       "<private>"
+%token _GLOBAL_                                        "<global>"
+%token _META_                                          "<meta>"
+%token <string> _STRINGS_                              "<strings>"
+%token _CONDITION_                                     "<condition>"
+%token <c_string> _IDENTIFIER_                         "identifier"
+%token <c_string> _STRING_IDENTIFIER_                  "string identifier"
+%token <c_string> _STRING_COUNT_                       "string count"
+%token <c_string> _STRING_OFFSET_                      "string offset"
+%token <c_string> _STRING_LENGTH_                      "string length"
+%token <c_string> _STRING_IDENTIFIER_WITH_WILDCARD_
+    "string identifier with wildcard"
+%token <integer> _NUMBER_                              "integer number"
+%token <double_> _DOUBLE_                              "floating point number"
+%token <integer> _INTEGER_FUNCTION_                    "integer function"
+%token <sized_string> _TEXT_STRING_                    "text string"
+%token <sized_string> _HEX_STRING_                     "hex string"
+%token <sized_string> _REGEXP_                         "regular expression"
+%token _ASCII_                                         "<ascii>"
+%token _WIDE_                                          "<wide>"
+%token _XOR_                                           "<xor>"
+%token _NOCASE_                                        "<nocase>"
+%token _FULLWORD_                                      "<fullword>"
+%token _AT_                                            "<at>"
+%token _FILESIZE_                                      "<filesize>"
+%token _ENTRYPOINT_                                    "<entrypoint>"
+%token _ALL_                                           "<all>"
+%token _ANY_                                           "<any>"
+%token _IN_                                            "<in>"
+%token _OF_                                            "<of>"
+%token _FOR_                                           "<for>"
+%token _THEM_                                          "<them>"
+%token _MATCHES_                                       "<matches>"
+%token _CONTAINS_                                      "<contains>"
+%token _IMPORT_                                        "<import>"
+%token _TRUE_                                          "<true>"
+%token _FALSE_                                         "<false"
+%token _OR_                                            "<or>"
+%token _AND_                                           "<and>"
+%token _NOT_                                           "<not>"
+%token _EQ_                                            "=="
+%token _NEQ_                                           "!="
+%token _LT_                                            "<"
+%token _LE_                                            "<="
+%token _GT_                                            ">"
+%token _GE_                                            ">="
+%token _SHIFT_LEFT_                                    "<<"
+%token _SHIFT_RIGHT_                                   ">>"
 
 %left _OR_
 %left _AND_
@@ -236,6 +255,10 @@ rules
     | rules error rule      /* on error skip until next rule..*/
     | rules error import    /* .. or import statement */
     | rules error "include" /* .. or include statement */
+    | rules _END_OF_INCLUDED_FILE_
+      {
+        _yr_compiler_pop_file_name(compiler);
+      }
     ;
 
 
@@ -284,6 +307,8 @@ meta
       }
     | _META_ ':' meta_declarations
       {
+        int result;
+
         // Each rule have a list of meta-data info, consisting in a
         // sequence of YR_META structures. The last YR_META structure does
         // not represent a real meta-data, it's just a end-of-list marker
@@ -295,7 +320,7 @@ meta
         memset(&null_meta, 0xFF, sizeof(YR_META));
         null_meta.type = META_TYPE_NULL;
 
-        int result = yr_arena_write_data(
+        result = yr_arena_write_data(
             compiler->metas_arena,
             &null_meta,
             sizeof(YR_META),
@@ -1000,9 +1025,11 @@ expression
       }
     | _STRING_IDENTIFIER_ _AT_ primary_expression
       {
+        int result;
+
         check_type_with_cleanup($3, EXPRESSION_TYPE_INTEGER, "at", yr_free($1));
 
-        int result = yr_parser_reduce_string_identifier(
+        result = yr_parser_reduce_string_identifier(
             yyscanner, $1, OP_FOUND_AT, $3.value.integer);
 
         yr_free($1);
@@ -1925,10 +1952,12 @@ primary_expression
       }
     | primary_expression _SHIFT_LEFT_ primary_expression
       {
+        int result;
+
         check_type($1, EXPRESSION_TYPE_INTEGER, "<<");
         check_type($3, EXPRESSION_TYPE_INTEGER, "<<");
 
-        int result = yr_parser_emit(yyscanner, OP_SHL, NULL);
+        result = yr_parser_emit(yyscanner, OP_SHL, NULL);
 
         if (!IS_UNDEFINED($3.value.integer) && $3.value.integer < 0)
           result = ERROR_INVALID_OPERAND;
@@ -1943,10 +1972,12 @@ primary_expression
       }
     | primary_expression _SHIFT_RIGHT_ primary_expression
       {
+        int result;
+
         check_type($1, EXPRESSION_TYPE_INTEGER, ">>");
         check_type($3, EXPRESSION_TYPE_INTEGER, ">>");
 
-        int result = yr_parser_emit(yyscanner, OP_SHR, NULL);
+        result = yr_parser_emit(yyscanner, OP_SHR, NULL);
 
         if (!IS_UNDEFINED($3.value.integer) && $3.value.integer < 0)
           result = ERROR_INVALID_OPERAND;

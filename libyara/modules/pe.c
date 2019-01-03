@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define _GNU_SOURCE
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <time.h>
@@ -51,6 +50,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <yara/modules.h>
 #include <yara/mem.h>
 #include <yara/strutils.h>
+#include <yara/utils.h>
+
 
 #include <yara/pe_utils.h>
 
@@ -882,11 +883,12 @@ IMPORTED_DLL* pe_parse_imports(
   IMPORTED_DLL* tail = NULL;
 
   PIMAGE_IMPORT_DESCRIPTOR imports;
+  PIMAGE_DATA_DIRECTORY directory;
 
   /* default to 0 imports until we know there are any */
   set_integer(0, pe->object, "number_of_imports");
 
-  PIMAGE_DATA_DIRECTORY directory = pe_get_directory_entry(
+  directory = pe_get_directory_entry(
       pe, IMAGE_DIRECTORY_ENTRY_IMPORT);
 
   if (directory == NULL)
@@ -969,6 +971,7 @@ EXPORT_FUNCTIONS* pe_parse_exports(
   EXPORT_FUNCTIONS* exported_functions;
 
   uint32_t i;
+  uint32_t number_of_names;
   uint16_t ordinal;
   int64_t offset;
   size_t remaining;
@@ -1054,7 +1057,7 @@ EXPORT_FUNCTIONS* pe_parse_exports(
 
   // Now, we can iterate through Names and NameOrdinals arrays to obtain
   // function names. Not all functions have names.
-  uint32_t number_of_names = yr_min(
+  number_of_names = yr_min(
       yr_le32toh(exports->NumberOfNames),
       exported_functions->number_of_exports);
 
@@ -1200,20 +1203,19 @@ void pe_parse_certificates(
       int bytes;
       const EVP_MD* sha1_digest = EVP_sha1();
       unsigned char thumbprint[YR_SHA1_LEN];
-      char thumbprint_ascii[YR_SHA1_LEN * 2];
+      char thumbprint_ascii[YR_SHA1_LEN * 2 + 1];
 
       ASN1_INTEGER* serial;
 
       X509* cert = sk_X509_value(certs, i);
 
       X509_digest(cert, sha1_digest, thumbprint, NULL);
+
       for (i = 0; i < YR_SHA1_LEN; i++)
-      {
         sprintf(thumbprint_ascii + (i * 2), "%02x", thumbprint[i]);
-      }
-      set_sized_string(
+
+      set_string(
           (char*) thumbprint_ascii,
-          sizeof(thumbprint_ascii),
           pe->object,
           "signatures[%i].thumbprint",
           counter);
@@ -1357,6 +1359,7 @@ void pe_parse_header(
 
   char section_name[IMAGE_SIZEOF_SHORT_NAME + 1];
   int i, scount, ddcount;
+
   uint64_t highest_sec_siz = 0;
   uint64_t highest_sec_ofs = 0;
   uint64_t section_end;
@@ -1531,6 +1534,7 @@ void pe_parse_header(
   data_dir = IS_64BITS_PE(pe) ? pe->header64->OptionalHeader.DataDirectory : pe->header->OptionalHeader.DataDirectory;
   ddcount = yr_le16toh(OptionalHeader(pe, NumberOfRvaAndSizes));
   ddcount = yr_min(ddcount, IMAGE_NUMBEROF_DIRECTORY_ENTRIES);
+
   for (i = 0; i < ddcount; i++)
   {
     if (!struct_fits_in_pe(pe, data_dir, IMAGE_DATA_DIRECTORY))
@@ -1668,7 +1672,7 @@ define_function(section_index_addr)
   YR_OBJECT* module = module();
   YR_SCAN_CONTEXT* context = scan_context();
 
-  int64_t i;
+  int i;
   int64_t offset;
   int64_t size;
 
@@ -1706,7 +1710,7 @@ define_function(section_index_name)
   char* name = string_argument(1);
 
   int64_t n = get_integer(module, "number_of_sections");
-  int64_t i;
+  int i;
 
   if (is_undefined(module, "number_of_sections"))
     return_integer(UNDEFINED);
@@ -2063,7 +2067,7 @@ define_function(locale)
   PE* pe = (PE*) module->data;
 
   uint64_t locale = integer_argument(1);
-  int64_t n, i;
+  int n, i;
 
   if (is_undefined(module, "number_of_resources"))
     return_integer(UNDEFINED);
@@ -2093,7 +2097,7 @@ define_function(language)
   PE* pe = (PE*) module->data;
 
   uint64_t language = integer_argument(1);
-  int64_t n, i;
+  int n, i;
 
   if (is_undefined(module, "number_of_resources"))
     return_integer(UNDEFINED);
@@ -2161,7 +2165,7 @@ static uint64_t rich_internal(
 {
   int64_t rich_length;
   int64_t rich_count;
-  int64_t i;
+  int i;
 
   PRICH_SIGNATURE clear_rich_signature;
   SIZED_STRING* rich_string;

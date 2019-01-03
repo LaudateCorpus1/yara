@@ -12,8 +12,8 @@ Compiling and installing YARA
 
 Download the source tarball and get prepared for compiling it::
 
-    tar -zxf yara-3.7.0.tar.gz
-    cd yara-3.7.0
+    tar -zxf yara-3.8.1.tar.gz
+    cd yara-3.8.1
     ./bootstrap.sh
 
 Make sure you have ``automake``, ``libtool``, ``make``  and ``gcc`` installed
@@ -138,5 +138,5 @@ located in ``/usr/local/lib``. In some Linux flavors the loader doesn't look for
 libraries in this path by default, we must instruct it to do so by adding
 ``/usr/local/lib`` to the loader configuration file ``/etc/ld.so.conf``::
 
-    sudo echo "/usr/local/lib" >> /etc/ld.so.conf
+    sudo sh -c 'echo "/usr/local/lib" >> /etc/ld.so.conf'
     sudo ldconfig

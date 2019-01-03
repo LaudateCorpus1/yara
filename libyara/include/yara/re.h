@@ -30,9 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef YR_RE_H
 #define YR_RE_H
 
-#include <stdbool.h>
 #include <ctype.h>
 
+#include <yara/utils.h>
 #include <yara/types.h>
 #include <yara/arena.h>
 #include <yara/sizedstr.h>
@@ -61,7 +61,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #define RE_OPCODE_ANY                   0xA0
-#define RE_OPCODE_ANY_EXCEPT_NEW_LINE   0xA1
 #define RE_OPCODE_LITERAL               0xA2
 #define RE_OPCODE_MASKED_LITERAL        0xA4
 #define RE_OPCODE_CLASS                 0xA5
@@ -139,13 +138,21 @@ int yr_re_ast_emit_code(
 
 
 RE_NODE* yr_re_node_create(
-    int type,
-    RE_NODE* left,
-    RE_NODE* right);
+    int type);
 
 
 void yr_re_node_destroy(
     RE_NODE* node);
+
+
+void yr_re_node_append_child(
+    RE_NODE* node,
+    RE_NODE* child);
+
+
+void yr_re_node_prepend_child(
+    RE_NODE* node,
+    RE_NODE* child);
 
 
 int yr_re_exec(

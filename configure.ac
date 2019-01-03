@@ -1,4 +1,4 @@
-AC_INIT([yara], [3.7.1], [vmalvarez@virustotal.com])
+AC_INIT([yara], [3.8.1], [vmalvarez@virustotal.com])
 
 AM_SILENT_RULES([yes])
 AC_CONFIG_SRCDIR([yara.c])
@@ -26,8 +26,6 @@ AC_PROG_YACC
 AC_SYS_LARGEFILE
 
 LT_INIT
-AC_PROG_LIBTOOL
-
 AC_CANONICAL_HOST
 
 case $host_alias in
@@ -40,7 +38,6 @@ case $host_os in
              # are in /usr/local/opt/openssl/include
              CFLAGS="$CFLAGS -DUSE_MACH_PROC -I/usr/local/opt/openssl/include"
              LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
-             mach=true
              posix=true
              proc_interface=mach
              jemalloc_prefix=je_ ;;
@@ -273,11 +270,9 @@ AS_IF([test "x$have_crypto" = "xno"],
     PC_REQUIRES_PRIVATE="$PC_REQUIRES_PRIVATE libcrypto"
   ])
 
-AS_IF([test "x$mach" != "xtrue"],
-  [
-    AC_CHECK_FUNCS([clock_gettime],,
-      AC_MSG_ERROR([clock_gettime not supported in your OS.]))
-  ],)
+AC_CHECK_HEADERS([stdbool.h])
+
+AC_CHECK_FUNCS([clock_gettime],,)
 
 AM_CONDITIONAL([DEBUG], [test x$debug = xtrue])
 AM_CONDITIONAL([POSIX], [test x$posix = xtrue])

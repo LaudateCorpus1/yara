@@ -16,8 +16,8 @@ data structures. Its counterpart is :c:func:`yr_finalize`, which must be called
 when you are finished using the library.
 
 In a multi-threaded program only the main thread must call
-:c:func:`yr_initialize` and :c:func:`yr_finalize`, but any additional thread
-using the library must call :c:func:`yr_finalize_thread` before exiting.
+:c:func:`yr_initialize` and :c:func:`yr_finalize`.
+No additional work is required from other threads using the library.
 
 
 Compiling rules
@@ -184,7 +184,7 @@ that needs to be written to the stream. In both cases ``size`` is the size of
 each element being read or written and ``count`` the number of elements. The
 total size of the data being read or written is ``size`` * ``count``. The
 ``read`` function must return the number of elements read, the ``write`` function
-must return the total size of the data written.
+must return the total number of elements written.
 
 The ``user_data`` pointer is the same you specified in the
 :c:type:`YR_STREAM` structure. You can use it to pass arbitrary data to your
@@ -277,6 +277,9 @@ found in the file it's subsequently ignored, implying that you'll have a
 single match for the string, even if it appears multiple times in the scanned
 data. This flag has the same effect of the ``-f`` command-line option described
 in :ref:`command-line`.
+
+Notice that you shouldn't call any of the ``yr_rules_scan_XXXX`` functions from
+within the callback as those functions are not re-entrant.
 
 Using a scanner
 ---------------
@@ -461,8 +464,11 @@ Functions
 
 .. c:function:: void yr_finalize_thread(void)
 
+  .. deprecated:: 3.8.0
+
   Any thread using the library, except the main thread, must call this
-  function when it finishes using the library.
+  function when it finishes using the library. Since version 3.8.0 this calling
+  this function is not required anymore, and it's deprecated.
 
 .. c:function:: int yr_compiler_create(YR_COMPILER** compiler)
 

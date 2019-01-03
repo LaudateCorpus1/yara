@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <assert.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -504,7 +503,7 @@ static int _yr_ac_find_suitable_transition_table_slot(
 
       automaton->bitmask = (YR_BITMASK*) yr_realloc(
           automaton->bitmask, b_bytes_size * 2);
-      
+
       if (automaton->t_table == NULL ||
           automaton->m_table == NULL ||
           automaton->bitmask == NULL)
@@ -603,7 +602,7 @@ static int _yr_ac_build_transition_table(
   automaton->bitmask = (YR_BITMASK*) yr_calloc(
       YR_BITMASK_SIZE(automaton->tables_size), sizeof(YR_BITMASK));
 
-  if (automaton->t_table == NULL || 
+  if (automaton->t_table == NULL ||
       automaton->m_table == NULL ||
       automaton->bitmask == NULL)
   {
@@ -849,13 +848,13 @@ int yr_ac_add_string(
   {
     state = automaton->root;
 
-    for (i = 0; i < atom->atom_length; i++)
+    for (i = 0; i < atom->atom.length; i++)
     {
-      next_state = _yr_ac_next_state(state, atom->atom[i]);
+      next_state = _yr_ac_next_state(state, atom->atom.bytes[i]);
 
       if (next_state == NULL)
       {
-        next_state = _yr_ac_state_create(state, atom->atom[i]);
+        next_state = _yr_ac_state_create(state, atom->atom.bytes[i]);
 
         if (next_state == NULL)
           return ERROR_INSUFFICIENT_MEMORY;

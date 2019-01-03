@@ -341,6 +341,8 @@ YR_API int yr_scanner_scan_mem_blocks(
   int tidx = 0;
   int result = ERROR_SUCCESS;
 
+  uint64_t elapsed_time;
+
   if (scanner->callback == NULL)
     return ERROR_CALLBACK_REQUIRED;
 
@@ -474,7 +476,20 @@ YR_API int yr_scanner_scan_mem_blocks(
 
 _exit:
 
-  scanner->rules->time_cost += yr_stopwatch_elapsed_us(&scanner->stopwatch);
+  elapsed_time = yr_stopwatch_elapsed_us(&scanner->stopwatch);
+
+  #ifdef PROFILING_ENABLED
+  yr_rules_foreach(rules, rule)
+  {
+    #ifdef _WIN32
+    InterlockedAdd64(&rule->time_cost, rule->time_cost_per_thread[tidx]);
+    #else
+    __sync_fetch_and_add(&rule->time_cost, rule->time_cost_per_thread[tidx]);
+    #endif
+
+    rule->time_cost_per_thread[tidx] = 0;
+  }
+  #endif
 
   _yr_scanner_clean_matches(scanner);
 
@@ -492,6 +507,7 @@ _exit:
 
   yr_mutex_lock(&rules->mutex);
   YR_BITARRAY_UNSET(rules->tidx_mask, tidx);
+  rules->time_cost += elapsed_time;
   yr_mutex_unlock(&rules->mutex);
 
   yr_set_tidx(-1);

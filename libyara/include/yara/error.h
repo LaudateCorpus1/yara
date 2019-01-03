@@ -99,6 +99,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ERROR_INVALID_OPERAND                   54
 #define ERROR_COULD_NOT_READ_FILE               55
 #define ERROR_DUPLICATED_EXTERNAL_VARIABLE      56
+#define ERROR_INVALID_MODULE_DATA               57
+#define ERROR_WRITING_FILE                      58
 
 
 #define FAIL_ON_ERROR(x) { \
@@ -115,10 +117,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   } \
 }
 
-#define FAIL_ON_COMPILER_ERROR(x) { \
-  compiler->last_error = (x); \
-  if (compiler->last_error != ERROR_SUCCESS) \
-    return compiler->last_error; \
+#define FAIL_ON_NULL_WITH_CLEANUP(x, cleanup) { \
+  if ((x) == NULL) { \
+    cleanup; \
+    return ERROR_INSUFFICIENT_MEMORY; \
+  } \
 }
 
 

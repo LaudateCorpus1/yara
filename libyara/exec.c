@@ -29,10 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define _GNU_SOURCE
 
-#include <stdbool.h>
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <float.h>
 
 #include <yara/globals.h>
 #include <yara/arena.h>
@@ -244,6 +244,10 @@ int yr_execute_code(
 
   #ifdef PROFILING_ENABLED
   start_time = yr_stopwatch_elapsed_us(&context->stopwatch);
+  #endif
+
+  #if PARANOID_EXEC
+  memset(mem, 0, MEM_SIZE * sizeof(mem[0]));
   #endif
 
   while(!stop)
@@ -518,7 +522,7 @@ int yr_execute_code(
 
         #ifdef PROFILING_ENABLED
         elapsed_time = yr_stopwatch_elapsed_us(&context->stopwatch);
-        rule->time_cost += (elapsed_time - start_time);
+        rule->time_cost_per_thread[tidx] += (elapsed_time - start_time);
         start_time = elapsed_time;
         #endif
 
@@ -779,6 +783,13 @@ int yr_execute_code(
 
       case OP_COUNT:
         pop(r1);
+
+        #if PARANOID_EXEC
+        // Make sure that the string pointer is within the rules arena.
+        if (yr_arena_page_for_address(context->rules->arena, r1.p) == NULL)
+          return ERROR_INTERNAL_FATAL_ERROR;
+        #endif
+
         r1.i = r1.s->matches[tidx].count;
         push(r1);
         break;
@@ -1158,7 +1169,7 @@ int yr_execute_code(
         pop(r1);
         ensure_defined(r2);
         ensure_defined(r1);
-        r1.i = r1.d == r2.d;
+        r1.i = fabs(r1.d - r2.d) < DBL_EPSILON;
         push(r1);
         break;
 
@@ -1167,7 +1178,7 @@ int yr_execute_code(
         pop(r1);
         ensure_defined(r2);
         ensure_defined(r1);
-        r1.i = r1.d != r2.d;
+        r1.i = fabs(r1.d - r2.d) >= DBL_EPSILON;
         push(r1);
         break;
 
@@ -1268,7 +1279,7 @@ int yr_execute_code(
       {
         #ifdef PROFILING_ENABLED
         assert(current_rule != NULL);
-        current_rule->time_cost += elapsed_time - start_time;
+        current_rule->time_cost_per_thread[tidx] += elapsed_time - start_time;
         #endif
         result = ERROR_SCAN_TIMEOUT;
         stop = true;
