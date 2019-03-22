@@ -90,7 +90,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #define MAX_PE_IMPORTS               16384
-#define MAX_PE_EXPORTS               65535
+#define MAX_PE_EXPORTS               8192
+#define MAX_EXPORT_NAME_LENGTH       512
 
 
 #define IS_RESOURCE_SUBDIRECTORY(entry) \
@@ -279,8 +280,8 @@ const uint8_t* parse_resource_name(
     const uint8_t* rsrc_str_ptr = rsrc_data + \
         (yr_le32toh(entry->Name) & 0x7FFFFFFF);
 
-    // A resource directory string is 2 bytes for a string and then a variable
-    // length Unicode string. Make sure we at least have two bytes.
+    // A resource directory string is 2 bytes for the length and then a variable
+    // length Unicode string. Make sure we have at least 2 bytes.
 
     if (!fits_in_pe(pe, rsrc_str_ptr, 2))
       return NULL;
@@ -885,7 +886,7 @@ IMPORTED_DLL* pe_parse_imports(
   PIMAGE_IMPORT_DESCRIPTOR imports;
   PIMAGE_DATA_DIRECTORY directory;
 
-  /* default to 0 imports until we know there are any */
+  // Default to 0 imports until we know there are any
   set_integer(0, pe->object, "number_of_imports");
 
   directory = pe_get_directory_entry(
@@ -971,6 +972,7 @@ EXPORT_FUNCTIONS* pe_parse_exports(
   EXPORT_FUNCTIONS* exported_functions;
 
   uint32_t i;
+  uint32_t number_of_exports;
   uint32_t number_of_names;
   uint16_t ordinal;
   int64_t offset;
@@ -984,7 +986,7 @@ EXPORT_FUNCTIONS* pe_parse_exports(
   if (pe == NULL)
     return NULL;
 
-  /* default to 0 exports until we know there are any */
+  // Default to 0 exports until we know there are any
   set_integer(0, pe->object, "number_of_exports");
 
   directory = pe_get_directory_entry(
@@ -1006,8 +1008,11 @@ EXPORT_FUNCTIONS* pe_parse_exports(
   if (!struct_fits_in_pe(pe, exports, IMAGE_EXPORT_DIRECTORY))
     return NULL;
 
-  if (yr_le32toh(exports->NumberOfFunctions) > MAX_PE_EXPORTS ||
-      yr_le32toh(exports->NumberOfFunctions) * sizeof(DWORD) > pe->data_size - offset)
+  number_of_exports = yr_min(
+      yr_le32toh(exports->NumberOfFunctions),
+      MAX_PE_EXPORTS);
+
+  if (number_of_exports * sizeof(DWORD) > pe->data_size - offset)
     return NULL;
 
   if (yr_le32toh(exports->NumberOfNames) > 0)
@@ -1035,11 +1040,9 @@ EXPORT_FUNCTIONS* pe_parse_exports(
   if (exported_functions == NULL)
     return NULL;
 
-  exported_functions->number_of_exports = yr_le32toh(
-      exports->NumberOfFunctions);
-
+  exported_functions->number_of_exports = number_of_exports;
   exported_functions->functions = (EXPORT_FUNCTION*) yr_malloc(
-      exported_functions->number_of_exports * sizeof(EXPORT_FUNCTION));
+      number_of_exports * sizeof(EXPORT_FUNCTION));
 
   if (exported_functions->functions == NULL)
   {
@@ -1086,7 +1089,8 @@ EXPORT_FUNCTIONS* pe_parse_exports(
     if (exported_functions->functions[ordinal].name == NULL)
     {
       exported_functions->functions[ordinal].name = yr_strndup(
-          (char*) (pe->data + offset), remaining);
+          (char*) (pe->data + offset),
+          yr_min(remaining, MAX_EXPORT_NAME_LENGTH));
     }
   }
 
@@ -1130,11 +1134,11 @@ void pe_parse_certificates(
 
   // Store the end of directory, making comparisons easier.
   eod = pe->data + \
-        yr_le32toh(directory->VirtualAddress) + \
-        yr_le32toh(directory->Size);
+      yr_le32toh(directory->VirtualAddress) + \
+      yr_le32toh(directory->Size);
 
   win_cert = (PWIN_CERTIFICATE) \
-    (pe->data + yr_le32toh(directory->VirtualAddress));
+      (pe->data + yr_le32toh(directory->VirtualAddress));
 
   //
   // Walk the directory, pulling out certificates.
@@ -1531,7 +1535,10 @@ void pe_parse_header(
       yr_le32toh(OptionalHeader(pe, LoaderFlags)),
       pe->object, "loader_flags");
 
-  data_dir = IS_64BITS_PE(pe) ? pe->header64->OptionalHeader.DataDirectory : pe->header->OptionalHeader.DataDirectory;
+  data_dir = IS_64BITS_PE(pe) ?
+      pe->header64->OptionalHeader.DataDirectory:
+      pe->header->OptionalHeader.DataDirectory;
+
   ddcount = yr_le16toh(OptionalHeader(pe, NumberOfRvaAndSizes));
   ddcount = yr_min(ddcount, IMAGE_NUMBEROF_DIRECTORY_ENTRIES);
 

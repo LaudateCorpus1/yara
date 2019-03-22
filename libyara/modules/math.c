@@ -37,7 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PI 3.141592653589793
 
-// log2 is not defined by math.h in VC++ prior to VS2013
+// log2 is not defined by math.h in VC++
+
 #if defined(_MSC_VER) && _MSC_VER < 1800
 static double log2(double n)
 {
